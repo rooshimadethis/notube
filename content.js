@@ -12,4 +12,11 @@ setTimeout(() => {
   iframe.src = chrome.runtime.getURL('app/dist/index.html');
 
   document.body.appendChild(iframe);
+
+  // Add event listener to close the iframe when clicking outside of it
+  document.addEventListener('click', (event) => {
+    if (!iframe.contains(event.target)) {
+      iframe.remove();
+    }
+  });
 }, 1000);
