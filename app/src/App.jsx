@@ -5,36 +5,56 @@ function App() {
   const [alternatives, setAlternatives] = useState([]);
   const [userAlternatives, setUserAlternatives] = useState([]);
   const [allAlternatives, setAllAlternatives] = useState([]);
+  const [newlyAdded, setNewlyAdded] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ show: false, alternative: null });
   const longPressTimer = useRef(null);
 
   useEffect(() => {
-    // Load user alternatives
+    // Load user alternatives and built-in alternatives
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['userAlternatives'], (result) => {
+      chrome.storage.local.get(['userAlternatives', 'alternatives'], (result) => {
         if (result.userAlternatives) {
           setUserAlternatives(result.userAlternatives);
         }
-      });
-    }
 
-    fetch('alternatives.json')
-      .then(response => response.json())
-      .then(data => {
-        setAlternatives(data);
+        // Use stored alternatives if available, otherwise load from JSON
+        if (result.alternatives) {
+          setAlternatives(result.alternatives);
+        } else {
+          fetch('alternatives.json')
+            .then(response => response.json())
+            .then(data => {
+              setAlternatives(data);
+            });
+        }
       });
+    } else {
+      // Fallback for non-Chrome environments
+      fetch('alternatives.json')
+        .then(response => response.json())
+        .then(data => {
+          setAlternatives(data);
+        });
+    }
   }, []);
 
   useEffect(() => {
-    const combined = [...userAlternatives, ...alternatives];
-    // Fisher-Yates shuffle
-    for (let i = combined.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [combined[i], combined[j]] = [combined[j], combined[i]];
+    // If there's a newly added item, show it at the top
+    if (newlyAdded) {
+      const combined = [newlyAdded, ...alternatives];
+      setAllAlternatives(combined);
+    } else {
+      // Normal shuffle behavior
+      const combined = [...userAlternatives, ...alternatives];
+      // Fisher-Yates shuffle
+      for (let i = combined.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [combined[i], combined[j]] = [combined[j], combined[i]];
+      }
+      setAllAlternatives(combined);
     }
-    setAllAlternatives(combined);
-  }, [userAlternatives, alternatives]);
+  }, [userAlternatives, alternatives, newlyAdded]);
 
   const getIcon = (category) => {
     switch (category) {
@@ -92,6 +112,7 @@ function App() {
 
         const updatedUserAlternatives = [newAlt, ...userAlternatives];
         setUserAlternatives(updatedUserAlternatives);
+        setNewlyAdded(newAlt); // Show at top until reload
 
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.set({ userAlternatives: updatedUserAlternatives });
@@ -107,11 +128,7 @@ function App() {
   const handleLongPressStart = (alt, e) => {
     e.preventDefault();
     longPressTimer.current = setTimeout(() => {
-      // Only allow deletion of user alternatives
-      const isUserAlternative = userAlternatives.some(ua => ua.url === alt.url);
-      if (isUserAlternative) {
-        setDeleteModal({ show: true, alternative: alt });
-      }
+      setDeleteModal({ show: true, alternative: alt });
     }, 500); // 500ms long press
   };
 
@@ -124,13 +141,33 @@ function App() {
 
   const handleDelete = () => {
     if (deleteModal.alternative) {
-      const updatedUserAlternatives = userAlternatives.filter(
-        alt => alt.url !== deleteModal.alternative.url
-      );
-      setUserAlternatives(updatedUserAlternatives);
+      const isUserAlternative = userAlternatives.some(ua => ua.url === deleteModal.alternative.url);
 
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ userAlternatives: updatedUserAlternatives });
+      if (isUserAlternative) {
+        // Remove from user alternatives
+        const updatedUserAlternatives = userAlternatives.filter(
+          alt => alt.url !== deleteModal.alternative.url
+        );
+        setUserAlternatives(updatedUserAlternatives);
+
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ userAlternatives: updatedUserAlternatives });
+        }
+      } else {
+        // Remove from built-in alternatives
+        const updatedAlternatives = alternatives.filter(
+          alt => alt.url !== deleteModal.alternative.url
+        );
+        setAlternatives(updatedAlternatives);
+
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ alternatives: updatedAlternatives });
+        }
+      }
+
+      // Clear newly added if it was just deleted
+      if (newlyAdded && newlyAdded.url === deleteModal.alternative.url) {
+        setNewlyAdded(null);
       }
     }
     setDeleteModal({ show: false, alternative: null });
