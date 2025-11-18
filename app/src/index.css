@@ -9,3 +9,11 @@ body {
     font-family: var(--font-sans);
     @apply bg-slate-900 text-slate-50;
 }
+
+@utility scrollbar-hide {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}

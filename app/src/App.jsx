@@ -10,7 +10,7 @@ function App() {
   }, []);
 
   return (
-    <div className="w-[350px] min-h-[500px] bg-slate-900 text-slate-50 p-6 relative overflow-hidden font-sans selection:bg-indigo-500/30">
+    <div className="w-full h-full bg-slate-900 text-slate-50 p-4 relative overflow-hidden font-sans selection:bg-indigo-500/30">
       {/* Background Gradients */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[40%] bg-indigo-600/20 rounded-full blur-[80px]" />
@@ -56,7 +56,7 @@ function App() {
                     {alt.description}
                   </p>
                 </div>
-                <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 -ml-2">
+                <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>

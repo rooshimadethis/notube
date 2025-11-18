@@ -6,8 +6,8 @@ function createIframe() {
   iframe.style.position = 'fixed';
   iframe.style.top = '20px';
   iframe.style.right = '20px';
-  iframe.style.width = '400px';
-  iframe.style.height = '400px';
+  iframe.style.width = '420px';
+  iframe.style.height = '600px';
   iframe.style.zIndex = '9999';
   iframe.style.backgroundColor = 'white'; // Explicitly set background to white
   iframe.style.borderRadius = '15px'; // Rounded corners
