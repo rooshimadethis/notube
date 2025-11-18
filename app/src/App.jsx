@@ -2,8 +2,18 @@ import { useState, useEffect } from 'react';
 
 function App() {
   const [alternatives, setAlternatives] = useState([]);
+  const [userAlternatives, setUserAlternatives] = useState([]);
 
   useEffect(() => {
+    // Load user alternatives
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['userAlternatives'], (result) => {
+        if (result.userAlternatives) {
+          setUserAlternatives(result.userAlternatives);
+        }
+      });
+    }
+
     fetch('alternatives.json')
       .then(response => response.json())
       .then(data => {
@@ -18,6 +28,12 @@ function App() {
 
   const getIcon = (category) => {
     switch (category) {
+      case 'custom':
+        return (
+          <svg className="w-6 h-6 text-yellow-400 group-hover:text-yellow-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
       case 'photography':
         return (
           <svg className="w-6 h-6 text-indigo-400 group-hover:text-indigo-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,6 +57,31 @@ function App() {
     }
   };
 
+  const handleAddCurrentSite = () => {
+    const params = new URLSearchParams(window.location.search);
+    const currentUrl = params.get('currentUrl');
+    const currentTitle = params.get('currentTitle');
+
+    if (currentUrl && currentTitle) {
+      // Check if already exists
+      if (userAlternatives.some(alt => alt.url === currentUrl)) return;
+
+      const newAlt = {
+        title: currentTitle,
+        url: currentUrl,
+        description: 'Added by user',
+        category: 'custom'
+      };
+
+      const updatedUserAlternatives = [newAlt, ...userAlternatives];
+      setUserAlternatives(updatedUserAlternatives);
+
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ userAlternatives: updatedUserAlternatives });
+      }
+    }
+  };
+
   return (
     <div className="w-full h-full bg-slate-900 text-slate-50 p-4 relative overflow-hidden font-sans selection:bg-indigo-500/30">
       {/* Background Gradients */}
@@ -51,7 +92,16 @@ function App() {
 
       <div className="relative z-10 flex flex-col h-full">
         {/* Header */}
-        <header className="mb-8 text-center">
+        <header className="mb-8 text-center relative">
+          <button
+            onClick={handleAddCurrentSite}
+            className="absolute right-0 top-0 p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-lg transition-colors"
+            title="Add current site"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-violet-400 tracking-tight">
             NoTube
           </h1>
@@ -60,7 +110,7 @@ function App() {
 
         {/* List */}
         <div className="flex-1 overflow-y-auto space-y-4 pb-6 scrollbar-hide">
-          {alternatives.map((alt, index) => (
+          {[...userAlternatives, ...alternatives].map((alt, index) => (
             <a
               key={alt.title}
               href={alt.url}

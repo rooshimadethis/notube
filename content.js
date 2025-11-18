@@ -12,7 +12,10 @@ function createIframe() {
   iframe.style.backgroundColor = 'white'; // Explicitly set background to white
   iframe.style.borderRadius = '15px'; // Rounded corners
   iframe.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.2)'; // 3D shadow
-  iframe.src = chrome.runtime.getURL('app/dist/index.html') + '?t=' + Date.now();
+  iframe.src = chrome.runtime.getURL('app/dist/index.html') +
+    '?t=' + Date.now() +
+    '&currentUrl=' + encodeURIComponent(window.location.href) +
+    '&currentTitle=' + encodeURIComponent(document.title);
 
   document.body.appendChild(iframe);
 
@@ -34,10 +37,12 @@ function toggleIframe() {
   }
 }
 
-// Automatic display on page load
-setTimeout(() => {
-  createIframe();
-}, 1000);
+// Automatic display on page load (only on YouTube)
+if (window.location.hostname.includes('youtube.com')) {
+  setTimeout(() => {
+    createIframe();
+  }, 1000);
+}
 
 // Listen for messages from the background script to toggle the iframe
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

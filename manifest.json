@@ -3,9 +3,14 @@
   "name": "NoTube",
   "version": "1.0",
   "description": "A Chrome extension to block YouTube",
-  "permissions": ["storage", "unlimitedStorage", "tabs", "scripting"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "scripting"
+  ],
   "host_permissions": [
-    "*://*.youtube.com/*"
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
@@ -24,14 +29,24 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["app/dist/*", "app/dist/assets/*"],
-      "matches": ["*://*.youtube.com/*"]
+      "resources": [
+        "app/dist/*",
+        "app/dist/assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
-      "js": ["content.js"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
     }
   ]
 }
