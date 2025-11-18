@@ -93,20 +93,45 @@ Pre-loaded with high-quality resources across multiple categories:
 - **Chrome Storage API** — Persist user-added alternatives
 
 ### **Project Structure**
+
+The project is organized into two main parts:
+
+#### **Root Directory** — Chrome Extension Files
+These files **must** remain in the root because Chrome expects them there:
 ```
 notube/
-├── manifest.json          # Extension configuration
-├── background.js          # Service worker for extension icon
-├── content.js             # Content script for popup injection
-├── images/                # Extension icons
-└── app/                   # React application
-    ├── src/
-    │   ├── App.jsx        # Main React component
-    │   └── index.css      # Tailwind styles
-    ├── public/
-    │   └── alternatives.json  # Curated alternatives data
-    └── dist/              # Built files (generated)
+├── manifest.json          # Extension configuration (required by Chrome)
+├── background.js          # Service worker for extension icon clicks
+├── content.js             # Content script that injects the popup iframe
+├── images/                # Extension icons (referenced by manifest.json)
+│   ├── icon16.png
+│   ├── icon48.png
+│   └── icon128.png
+└── config/                # Configuration files
 ```
+
+#### **App Directory** — React Build Project
+This is a **complete Vite/React project** that builds the popup UI:
+```
+app/
+├── package.json           # Node dependencies for React app
+├── vite.config.js         # Vite build configuration
+├── tailwind.config.js     # Tailwind CSS configuration
+├── src/                   # React source files
+│   ├── App.jsx            # Main React component
+│   ├── main.jsx           # React entry point
+│   └── index.css          # Tailwind styles
+├── public/                # Static assets
+│   └── alternatives.json  # Curated alternatives data
+├── dist/                  # Built output (referenced by manifest.json)
+└── node_modules/          # Dependencies (generated)
+```
+
+**Why this separation?**
+- Chrome extension files (manifest, scripts, icons) must be in the root
+- The React app is a separate build project that compiles to `app/dist/`
+- `content.js` loads the built React app from `app/dist/index.html` into an iframe
+- This keeps the extension logic separate from the UI framework's build system
 
 ---
 
