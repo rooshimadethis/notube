@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 function App() {
   const [alternatives, setAlternatives] = useState([]);
   const [userAlternatives, setUserAlternatives] = useState([]);
+  const [allAlternatives, setAllAlternatives] = useState([]);
 
   useEffect(() => {
     // Load user alternatives
@@ -17,14 +18,19 @@ function App() {
     fetch('alternatives.json')
       .then(response => response.json())
       .then(data => {
-        // Fisher-Yates shuffle
-        for (let i = data.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [data[i], data[j]] = [data[j], data[i]];
-        }
         setAlternatives(data);
       });
   }, []);
+
+  useEffect(() => {
+    const combined = [...userAlternatives, ...alternatives];
+    // Fisher-Yates shuffle
+    for (let i = combined.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [combined[i], combined[j]] = [combined[j], combined[i]];
+    }
+    setAllAlternatives(combined);
+  }, [userAlternatives, alternatives]);
 
   const getIcon = (category) => {
     switch (category) {
@@ -110,7 +116,7 @@ function App() {
 
         {/* List */}
         <div className="flex-1 overflow-y-auto space-y-4 pb-6 scrollbar-hide">
-          {[...userAlternatives, ...alternatives].map((alt, index) => (
+          {allAlternatives.map((alt, index) => (
             <a
               key={alt.title}
               href={alt.url}
