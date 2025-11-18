@@ -1,2 +1,3 @@
-// This file is intentionally left blank.
-// The content script handles the logic on YouTube pages.
+chrome.action.onClicked.addListener((tab) => {
+  chrome.tabs.sendMessage(tab.id, { action: 'togglePopup' });
+});
