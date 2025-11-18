@@ -1,0 +1,32 @@
+[
+  {
+    "title": "PetaPixel",
+    "url": "https://petapixel.com/",
+    "description": "A leading blog for photographers with news, reviews, and education."
+  },
+  {
+    "title": "DIY Photography",
+    "url": "https://www.diyphotography.net/",
+    "description": "A great resource for budget-friendly photography tips and tricks."
+  },
+  {
+    "title": "Strobist",
+    "url": "https://strobist.blogspot.com/",
+    "description": "Learn how to use off-camera flash and master lighting techniques."
+  },
+  {
+    "title": "Coding Horror",
+    "url": "https://blog.codinghorror.com/",
+    "description": "Insightful and entertaining commentary on software development by Jeff Atwood."
+  },
+  {
+    "title": "The Daily WTF",
+    "url": "https://thedailywtf.com/",
+    "description": "A humorous look at bad code and software development practices."
+  },
+  {
+    "title": "Hacker Noon",
+    "url": "https://hackernoon.com/",
+    "description": "A diverse range of tech-related content, including software development and AI."
+  }
+]

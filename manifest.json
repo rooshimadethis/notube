@@ -3,7 +3,7 @@
   "name": "NoTube",
   "version": "1.0",
   "description": "A Chrome extension to block YouTube",
-  "permissions": ["webRequest", "webRequestBlocking", "storage", "unlimitedStorage", "tabs", "scripting"],
+  "permissions": ["storage", "unlimitedStorage", "tabs", "scripting"],
   "host_permissions": [
     "*://*.youtube.com/*"
   ],
@@ -11,7 +11,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "app/dist/index.html",
     "default_icon": {
       "16": "images/icon16.png",
       "48": "images/icon48.png",
@@ -22,5 +22,17 @@
     "16": "images/icon16.png",
     "48": "images/icon48.png",
     "128": "images/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["app/dist/*", "app/dist/assets/*"],
+      "matches": ["*://*.youtube.com/*"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"]
+    }
+  ]
 }
