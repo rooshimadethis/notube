@@ -14,6 +14,16 @@ Instead of falling into the endless scroll, you'll be gently redirected toward c
 
 ---
 
+## 📸 Screenshots
+
+![NoTube Extension Popup](images/screenshot.png)
+*The NoTube popup showing curated alternatives to YouTube*
+
+![Delete Confirmation Modal](images/screenshot_delete.png)
+*Long-press any alternative to remove it from your list*
+
+---
+
 ## ✨ Features
 
 ### 🎯 **Auto-Popup on YouTube**
@@ -29,19 +39,15 @@ Pre-loaded with high-quality resources across multiple categories:
 
 ### ➕ **Add Custom Sites**
 - Click the **+** button to add the current website to your personal list
-- Build your own collection of productive alternatives
+- **AI-powered descriptions** — Automatically generates engaging descriptions using Groq AI
 - Custom sites are stored locally and persist across sessions
+- Newly added sites appear at the top of your list
 
-### 🎨 **Beautiful Modern UI**
-- Sleek dark theme with gradient accents
-- Smooth animations and hover effects
-- Glassmorphic design with subtle blur effects
-- Fully responsive and polished interface
+### 🗑️ **Long-Press Deletion**
+- Long-press (or click and hold) any alternative card to delete it
 
 ### 🔀 **Randomized Display**
-- Alternatives are shuffled on each load
-- Discover new resources every time
-- Keeps the experience fresh and engaging
+- Alternatives are shuffled on each load to keep things fresh
 
 ### 🎛️ **Manual Toggle**
 - Click the extension icon in your toolbar to toggle the popup on any page
@@ -59,7 +65,18 @@ Pre-loaded with high-quality resources across multiple categories:
    cd notube
    ```
 
-2. **Build the React app**
+2. **Configure API Key (Optional)**
+   - To enable AI-generated descriptions for custom sites, you'll need a Groq API key
+   - Get a free API key from [Groq Console](https://console.groq.com/)
+   - Create a file at `config/local.json` with the following content:
+   ```json
+   {
+     "groqApiKey": "your-api-key-here"
+   }
+   ```
+   - This file is gitignored and will remain local to your machine
+
+3. **Build the React app**
    ```bash
    cd app
    npm install
@@ -67,13 +84,13 @@ Pre-loaded with high-quality resources across multiple categories:
    cd ..
    ```
 
-3. **Load the extension in Chrome**
+4. **Load the extension in Chrome**
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable **Developer mode** (toggle in top-right corner)
    - Click **Load unpacked**
    - Select the `/notube` directory (the root folder containing `manifest.json`)
 
-4. **Pin the extension** (optional)
+5. **Pin the extension** (optional)
    - Click the puzzle icon in Chrome's toolbar
    - Find **NoTube** and click the pin icon
 
@@ -85,6 +102,7 @@ Pre-loaded with high-quality resources across multiple categories:
 - **React** — Modern UI library for building the popup interface
 - **Vite** — Fast build tool and dev server
 - **Tailwind CSS** — Utility-first CSS framework for styling
+- **Groq AI** — Generates engaging descriptions for user-added sites
 
 ### **Extension Architecture**
 - **Manifest V3** — Latest Chrome extension platform
@@ -120,6 +138,7 @@ app/
 ├── src/                   # React source files
 │   ├── App.jsx            # Main React component
 │   ├── main.jsx           # React entry point
+│   ├── groqApi.js         # AI description generation service
 │   └── index.css          # Tailwind styles
 ├── public/                # Static assets
 │   └── alternatives.json  # Curated alternatives data
@@ -155,6 +174,9 @@ app/
    - Click outside the popup to dismiss it
    - Click the extension icon to toggle it on any page
    - Click the **+** button to add the current site to your list
+     - AI automatically generates an engaging description using Groq
+     - The new site appears at the top of your list
+   - Long-press any card to delete it from your alternatives
 
 ---
 
@@ -251,4 +273,4 @@ npm run build
 
 ## 🙏 Acknowledgments
 
-- thanks gemini ur the goat
+- thanks gemini/claude ur the goat
