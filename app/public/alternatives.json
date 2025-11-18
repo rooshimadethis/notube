@@ -15,6 +15,41 @@
     "description": "Learn how to use off-camera flash and master lighting techniques."
   },
   {
+    "title": "Fstoppers",
+    "url": "https://fstoppers.com/",
+    "description": "A community of photographers, videographers, and creative professionals."
+  },
+  {
+    "title": "Digital Photography School",
+    "url": "https://digital-photography-school.com/",
+    "description": "Simple tips to help you get the most out of your camera."
+  },
+  {
+    "title": "Creative Boom",
+    "url": "https://www.creativeboom.com/",
+    "description": "Art, design, and photography inspiration for creative people."
+  },
+  {
+    "title": "Book Riot",
+    "url": "https://bookriot.com/",
+    "description": "The largest independent editorial book site in North America."
+  },
+  {
+    "title": "Literary Hub",
+    "url": "https://lithub.com/",
+    "description": "A daily source for all the news, ideas, and rich culture of the literary world."
+  },
+  {
+    "title": "The Millions",
+    "url": "https://themillions.com/",
+    "description": "An online magazine offering coverage on books, arts, and culture."
+  },
+  {
+    "title": "Goodreads Blog",
+    "url": "https://www.goodreads.com/blog",
+    "description": "News, interviews, and roundups from the world's largest site for readers."
+  },
+  {
     "title": "Coding Horror",
     "url": "https://blog.codinghorror.com/",
     "description": "Insightful and entertaining commentary on software development by Jeff Atwood."
@@ -28,5 +63,25 @@
     "title": "Hacker Noon",
     "url": "https://hackernoon.com/",
     "description": "A diverse range of tech-related content, including software development and AI."
+  },
+  {
+    "title": "Stack Overflow Blog",
+    "url": "https://stackoverflow.blog/",
+    "description": "Essays, opinions, and advice on the act of computer programming."
+  },
+  {
+    "title": "freeCodeCamp",
+    "url": "https://www.freecodecamp.org/news/",
+    "description": "Learn to code for free. Build projects. Earn certifications."
+  },
+  {
+    "title": "Smashing Magazine",
+    "url": "https://www.smashingmagazine.com/",
+    "description": "For web designers and developers."
+  },
+  {
+    "title": "Uber Engineering Blog",
+    "url": "https://www.uber.com/en-US/blog/engineering/",
+    "description": "The technology behind Uber's platform."
   }
 ]

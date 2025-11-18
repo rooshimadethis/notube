@@ -6,7 +6,14 @@ function App() {
   useEffect(() => {
     fetch('alternatives.json')
       .then(response => response.json())
-      .then(data => setAlternatives(data));
+      .then(data => {
+        // Fisher-Yates shuffle
+        for (let i = data.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [data[i], data[j]] = [data[j], data[i]];
+        }
+        setAlternatives(data);
+      });
   }, []);
 
   return (
