@@ -45,3 +45,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     toggleIframe();
   }
 });
+
+// Listen for messages from the iframe to close itself
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CLOSE_NOTUBE_POPUP') {
+    if (iframe) {
+      iframe.remove();
+      iframe = null;
+    }
+  }
+});
