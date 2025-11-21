@@ -7,8 +7,17 @@
     "storage",
     "unlimitedStorage",
     "tabs",
-    "scripting"
+    "tabs",
+    "scripting",
+    "identity"
   ],
+  "oauth2": {
+    "client_id": "459361316888-0is47ghb22d8kb1mb2drsk206tb4ags4.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
   "host_permissions": [
     "<all_urls>"
   ],

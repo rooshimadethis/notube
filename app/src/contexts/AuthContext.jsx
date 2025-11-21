@@ -6,7 +6,7 @@ import {
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithCredential
 } from 'firebase/auth';
 
 const AuthContext = createContext();
@@ -27,9 +27,23 @@ export function AuthProvider({ children }) {
         return signInWithEmailAndPassword(auth, email, password);
     }
 
-    function loginWithGoogle() {
-        const provider = new GoogleAuthProvider();
-        return signInWithPopup(auth, provider);
+    async function loginWithGoogle() {
+        // 1. Get Google Token via Chrome Identity API
+        const token = await new Promise((resolve, reject) => {
+            chrome.identity.getAuthToken({ interactive: true }, (token) => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve(token);
+                }
+            });
+        });
+
+        // 2. Create Firebase Credential
+        const credential = GoogleAuthProvider.credential(null, token);
+
+        // 3. Sign in to Firebase
+        return signInWithCredential(auth, credential);
     }
 
     function logout() {
