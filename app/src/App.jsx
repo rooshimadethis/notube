@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { generateDescription } from './groqApi';
+import { useAuth } from './contexts/AuthContext';
+import AuthModal from './components/AuthModal';
+import { saveUserAlternatives, getUserAlternatives, mergeAlternatives } from './services/firestoreService';
 
 function App() {
   const [alternatives, setAlternatives] = useState([]);
@@ -8,6 +11,8 @@ function App() {
   const [newlyAdded, setNewlyAdded] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ show: false, alternative: null });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { currentUser, logout } = useAuth();
   const longPressTimer = useRef(null);
 
   useEffect(() => {
@@ -38,6 +43,44 @@ function App() {
         });
     }
   }, []);
+
+  // Sync with Firestore when user logs in
+  useEffect(() => {
+    async function syncWithCloud() {
+      if (currentUser) {
+        try {
+          const cloudAlts = await getUserAlternatives(currentUser.uid);
+          const merged = mergeAlternatives(userAlternatives, cloudAlts);
+
+          // Update local state
+          setUserAlternatives(merged);
+
+          // Update Chrome storage
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ userAlternatives: merged });
+          }
+
+          // Sync back to cloud (to ensure cloud has the merged set)
+          await saveUserAlternatives(currentUser.uid, merged);
+        } catch (error) {
+          console.error("Error syncing with cloud:", error);
+        }
+      }
+    }
+
+    syncWithCloud();
+  }, [currentUser]); // Run when user logs in
+
+  // Save to Firestore when userAlternatives changes (if logged in)
+  useEffect(() => {
+    if (currentUser && userAlternatives.length > 0) {
+      const timeoutId = setTimeout(() => {
+        saveUserAlternatives(currentUser.uid, userAlternatives);
+      }, 1000); // Debounce 1s
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [userAlternatives, currentUser]);
 
   useEffect(() => {
     // If there's a newly added item, show it at the top
@@ -209,6 +252,30 @@ function App() {
             NoTube
           </h1>
           <p className="text-slate-400 text-sm mt-1 font-medium">Focus on what matters</p>
+
+          {/* Auth Button */}
+          <div className="absolute left-0 top-0">
+            {currentUser ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 text-xs font-bold border border-indigo-500/30">
+                  {currentUser.email.charAt(0).toUpperCase()}
+                </div>
+                <button
+                  onClick={logout}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="text-xs font-medium text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-lg transition-colors border border-indigo-500/20"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
         </header>
 
         {/* List */}
@@ -297,6 +364,11 @@ function App() {
           </div>
         </div>
       )}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
   );
 }
