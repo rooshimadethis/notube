@@ -5,8 +5,7 @@ import AuthModal from './components/AuthModal';
 import { saveUserAlternatives, getUserAlternatives, mergeAlternatives } from './services/firestoreService';
 
 function App() {
-  const [alternatives, setAlternatives] = useState([]);
-  const [userAlternatives, setUserAlternatives] = useState([]);
+  const [localItems, setLocalItems] = useState([]);
   const [allAlternatives, setAllAlternatives] = useState([]);
   const [newlyAdded, setNewlyAdded] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -16,89 +15,91 @@ function App() {
   const longPressTimer = useRef(null);
 
   useEffect(() => {
-    // Load user alternatives and built-in alternatives
+    // Initialize data
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['userAlternatives', 'alternatives'], (result) => {
-        if (result.userAlternatives) {
-          setUserAlternatives(result.userAlternatives);
-        }
-
-        // Use stored alternatives if available, otherwise load from JSON
-        if (result.alternatives) {
-          setAlternatives(result.alternatives);
+      chrome.storage.local.get(['localItems', 'userAlternatives'], (result) => {
+        if (result.localItems !== undefined) {
+          // Normal load
+          setLocalItems(result.localItems);
+        } else if (result.userAlternatives !== undefined) {
+          // Migration from old version
+          setLocalItems(result.userAlternatives);
+          chrome.storage.local.set({ localItems: result.userAlternatives });
         } else {
+          // First run: Load defaults
           fetch('alternatives.json')
             .then(response => response.json())
             .then(data => {
-              setAlternatives(data);
+              setLocalItems(data);
+              chrome.storage.local.set({ localItems: data });
             });
         }
       });
     } else {
-      // Fallback for non-Chrome environments
+      // Fallback for non-Chrome environments (dev)
       fetch('alternatives.json')
         .then(response => response.json())
         .then(data => {
-          setAlternatives(data);
+          setLocalItems(data);
         });
     }
   }, []);
 
+  // Keep a ref to localItems to access the latest value in async callbacks
+  const localItemsRef = useRef(localItems);
+  useEffect(() => {
+    localItemsRef.current = localItems;
+  }, [localItems]);
+
   // Sync with Firestore when user logs in
   useEffect(() => {
-    async function syncWithCloud() {
+    async function syncFromCloud() {
       if (currentUser) {
         try {
-          const cloudAlts = await getUserAlternatives(currentUser.uid);
+          const cloudItems = await getUserAlternatives(currentUser.uid);
 
-          // Combine ALL local alternatives (user + built-in)
-          // This ensures we capture the full state before merging with cloud
-          const localFullList = [...userAlternatives, ...alternatives];
+          // Merge local items with cloud items
+          // Use the ref to ensure we have the very latest local items even if they changed while fetching
+          const merged = mergeAlternatives(localItemsRef.current, cloudItems);
 
-          const merged = mergeAlternatives(localFullList, cloudAlts);
-
-          // Update local state - userAlternatives becomes the SINGLE source of truth
-          setUserAlternatives(merged);
-          setAlternatives([]); // Clear built-ins to avoid duplication
+          setLocalItems(merged);
 
           // Update Chrome storage
           if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set({
-              userAlternatives: merged,
-              alternatives: [] // Clear built-ins in storage too
-            });
+            chrome.storage.local.set({ localItems: merged });
           }
 
-          // Sync back to cloud (to ensure cloud has the merged set)
-          await saveUserAlternatives(currentUser.uid, merged);
+          // We do NOT need to save back to cloud here explicitly.
+          // setLocalItems(merged) will trigger the OTHER useEffect which handles saving.
+          // This prevents a double-save and race condition.
         } catch (error) {
           console.error("Error syncing with cloud:", error);
         }
       }
     }
 
-    syncWithCloud();
+    syncFromCloud();
   }, [currentUser]); // Run when user logs in
 
-  // Save to Firestore when userAlternatives changes (if logged in)
+  // Save to Firestore when localItems changes (if logged in)
   useEffect(() => {
     if (currentUser) {
       const timeoutId = setTimeout(() => {
-        saveUserAlternatives(currentUser.uid, userAlternatives);
+        saveUserAlternatives(currentUser.uid, localItems);
       }, 1000); // Debounce 1s
 
       return () => clearTimeout(timeoutId);
     }
-  }, [userAlternatives, currentUser]);
+  }, [localItems, currentUser]);
 
   useEffect(() => {
     // If there's a newly added item, show it at the top
     if (newlyAdded) {
-      const combined = [newlyAdded, ...userAlternatives.filter(a => a.url !== newlyAdded.url), ...alternatives];
+      const combined = [newlyAdded, ...localItems.filter(a => a.url !== newlyAdded.url)];
       setAllAlternatives(combined);
     } else {
       // Normal shuffle behavior
-      const combined = [...userAlternatives, ...alternatives];
+      const combined = [...localItems];
       // Fisher-Yates shuffle
       for (let i = combined.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -106,7 +107,7 @@ function App() {
       }
       setAllAlternatives(combined);
     }
-  }, [userAlternatives, alternatives, newlyAdded]);
+  }, [localItems, newlyAdded]);
 
   const getIcon = (category) => {
     switch (category) {
@@ -146,7 +147,7 @@ function App() {
 
     if (currentUrl && currentTitle) {
       // Check if already exists
-      if (userAlternatives.some(alt => alt.url === currentUrl)) return;
+      if (localItems.some(alt => alt.url === currentUrl)) return;
 
       // Set loading state
       setIsGenerating(true);
@@ -162,12 +163,12 @@ function App() {
           category: 'custom'
         };
 
-        const updatedUserAlternatives = [newAlt, ...userAlternatives];
-        setUserAlternatives(updatedUserAlternatives);
+        const updatedItems = [newAlt, ...localItems];
+        setLocalItems(updatedItems);
         setNewlyAdded(newAlt); // Show at top until reload
 
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ userAlternatives: updatedUserAlternatives });
+          chrome.storage.local.set({ localItems: updatedItems });
         }
       } catch (error) {
         console.error('Error adding site:', error);
@@ -193,28 +194,13 @@ function App() {
 
   const handleDelete = () => {
     if (deleteModal.alternative) {
-      const isUserAlternative = userAlternatives.some(ua => ua.url === deleteModal.alternative.url);
+      const updatedItems = localItems.filter(
+        alt => alt.url !== deleteModal.alternative.url
+      );
+      setLocalItems(updatedItems);
 
-      if (isUserAlternative) {
-        // Remove from user alternatives
-        const updatedUserAlternatives = userAlternatives.filter(
-          alt => alt.url !== deleteModal.alternative.url
-        );
-        setUserAlternatives(updatedUserAlternatives);
-
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ userAlternatives: updatedUserAlternatives });
-        }
-      } else {
-        // Remove from built-in alternatives
-        const updatedAlternatives = alternatives.filter(
-          alt => alt.url !== deleteModal.alternative.url
-        );
-        setAlternatives(updatedAlternatives);
-
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ alternatives: updatedAlternatives });
-        }
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ localItems: updatedItems });
       }
 
       // Clear newly added if it was just deleted
