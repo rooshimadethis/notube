@@ -50,14 +50,23 @@ function App() {
       if (currentUser) {
         try {
           const cloudAlts = await getUserAlternatives(currentUser.uid);
-          const merged = mergeAlternatives(userAlternatives, cloudAlts);
 
-          // Update local state
+          // Combine ALL local alternatives (user + built-in)
+          // This ensures we capture the full state before merging with cloud
+          const localFullList = [...userAlternatives, ...alternatives];
+
+          const merged = mergeAlternatives(localFullList, cloudAlts);
+
+          // Update local state - userAlternatives becomes the SINGLE source of truth
           setUserAlternatives(merged);
+          setAlternatives([]); // Clear built-ins to avoid duplication
 
           // Update Chrome storage
           if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set({ userAlternatives: merged });
+            chrome.storage.local.set({
+              userAlternatives: merged,
+              alternatives: [] // Clear built-ins in storage too
+            });
           }
 
           // Sync back to cloud (to ensure cloud has the merged set)
@@ -73,7 +82,7 @@ function App() {
 
   // Save to Firestore when userAlternatives changes (if logged in)
   useEffect(() => {
-    if (currentUser && userAlternatives.length > 0) {
+    if (currentUser) {
       const timeoutId = setTimeout(() => {
         saveUserAlternatives(currentUser.uid, userAlternatives);
       }, 1000); // Debounce 1s
