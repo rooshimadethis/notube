@@ -94,7 +94,7 @@ function App() {
   useEffect(() => {
     // If there's a newly added item, show it at the top
     if (newlyAdded) {
-      const combined = [newlyAdded, ...alternatives];
+      const combined = [newlyAdded, ...userAlternatives.filter(a => a.url !== newlyAdded.url), ...alternatives];
       setAllAlternatives(combined);
     } else {
       // Normal shuffle behavior
