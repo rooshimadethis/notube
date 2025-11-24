@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext';
 import AuthModal from './components/AuthModal';
 import { saveUserAlternatives, getUserAlternatives, mergeAlternatives } from './services/firestoreService';
 import { Alternative } from '@rooshi/notube-shared';
+import defaultAlternatives from '@rooshi/notube-shared/default_alternatives.json';
 
 function App() {
   const [localItems, setLocalItems] = useState([]);
@@ -28,21 +29,13 @@ function App() {
           chrome.storage.local.set({ localItems: result.userAlternatives });
         } else {
           // First run: Load defaults
-          fetch('alternatives.json')
-            .then(response => response.json())
-            .then(data => {
-              setLocalItems(data);
-              chrome.storage.local.set({ localItems: data });
-            });
+          setLocalItems(defaultAlternatives);
+          chrome.storage.local.set({ localItems: defaultAlternatives });
         }
       });
     } else {
       // Fallback for non-Chrome environments (dev)
-      fetch('alternatives.json')
-        .then(response => response.json())
-        .then(data => {
-          setLocalItems(data);
-        });
+      setLocalItems(defaultAlternatives);
     }
   }, []);
 
