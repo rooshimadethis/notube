@@ -3,6 +3,7 @@ import { generateDescription } from './groqApi';
 import { useAuth } from './contexts/AuthContext';
 import AuthModal from './components/AuthModal';
 import { saveUserAlternatives, getUserAlternatives, mergeAlternatives } from './services/firestoreService';
+import { Alternative } from '@rooshi/notube-shared';
 
 function App() {
   const [localItems, setLocalItems] = useState([]);
@@ -156,12 +157,13 @@ function App() {
         // Generate AI description
         const description = await generateDescription(currentTitle, currentUrl);
 
-        const newAlt = {
-          title: currentTitle,
-          url: currentUrl,
-          description: description,
-          category: 'custom'
-        };
+        const alt = new Alternative();
+        alt.setTitle(currentTitle);
+        alt.setUrl(currentUrl);
+        alt.setDescription(description);
+        alt.setCategory('custom');
+
+        const newAlt = alt.toObject();
 
         const updatedItems = [newAlt, ...localItems];
         setLocalItems(updatedItems);

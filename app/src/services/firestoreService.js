@@ -1,11 +1,24 @@
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { Alternative } from '@rooshi/notube-shared';
+
+const toAlternativeObject = (data) => {
+    const alt = new Alternative();
+    alt.setTitle(data.title || '');
+    alt.setUrl(data.url || '');
+    alt.setDescription(data.description || '');
+    alt.setCategory(data.category || '');
+    return alt.toObject();
+};
 
 export const saveUserAlternatives = async (userId, alternatives) => {
     if (!userId) return;
     try {
+        // Sanitize data using the shared model
+        const sanitizedAlternatives = alternatives.map(toAlternativeObject);
+
         await setDoc(doc(db, 'users', userId), {
-            alternatives,
+            alternatives: sanitizedAlternatives,
             lastUpdated: new Date()
         }, { merge: true });
     } catch (error) {
@@ -21,7 +34,9 @@ export const getUserAlternatives = async (userId) => {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            return docSnap.data().alternatives || [];
+            const data = docSnap.data().alternatives || [];
+            // Ensure all fetched data conforms to the model
+            return data.map(toAlternativeObject);
         } else {
             return [];
         }
