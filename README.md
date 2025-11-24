@@ -180,25 +180,31 @@ app/
 
 ---
 
-## 🎨 Customization
+### **Development Workflow**
 
-### **Adding More Curated Alternatives**
+```bash
+# Install dependencies
+cd app
+npm install
 
-Edit `app/public/alternatives.json`:
+# Run dev server (for testing UI changes)
+npm run dev
 
-```json
-{
-  "title": "Your Site Name",
-  "url": "https://example.com",
-  "description": "A brief description of the site",
-  "category": "software" // or "photography", "books", "custom"
-}
+# Build for production
+npm run build
+
+
+# Reload extension in Chrome after changes
+# Go to chrome://extensions/ and click the reload icon
 ```
 
-After editing, rebuild the app:
+### **Updating Shared Library**
+
+If you need to update the `@rooshi/notube-shared` dependency to the latest version:
+
 ```bash
 cd app
-npm run build
+npm update @rooshi/notube-shared
 ```
 
 ---
@@ -252,24 +258,6 @@ npm run build
 
 ---
 
-### **Development Workflow**
-
-```bash
-# Install dependencies
-cd app
-npm install
-
-# Run dev server (for testing UI changes)
-npm run dev
-
-# Build for production
-npm run build
-
-# Reload extension in Chrome after changes
-# Go to chrome://extensions/ and click the reload icon
-```
-
----
 
 ## 🙏 Acknowledgments
 
