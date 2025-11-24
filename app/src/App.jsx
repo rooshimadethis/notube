@@ -20,15 +20,19 @@ function App() {
     // Initialize data
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['localItems', 'userAlternatives'], (result) => {
-        if (result.localItems !== undefined) {
+        // Check if we have valid local items
+        if (result.localItems && result.localItems.length > 0) {
           // Normal load
+          console.log("Loaded local items:", result.localItems.length);
           setLocalItems(result.localItems);
-        } else if (result.userAlternatives !== undefined) {
+        } else if (result.userAlternatives && result.userAlternatives.length > 0) {
           // Migration from old version
+          console.log("Migrating user alternatives");
           setLocalItems(result.userAlternatives);
           chrome.storage.local.set({ localItems: result.userAlternatives });
         } else {
-          // First run: Load defaults
+          // First run or empty: Load defaults
+          console.log("Loading defaults:", defaultAlternatives.length);
           setLocalItems(defaultAlternatives);
           chrome.storage.local.set({ localItems: defaultAlternatives });
         }
