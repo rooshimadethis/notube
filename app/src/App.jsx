@@ -2,9 +2,38 @@ import { useState, useEffect, useRef } from 'react';
 import { generateDescription } from './groqApi';
 import { useAuth } from './contexts/AuthContext';
 import AuthModal from './components/AuthModal';
-import { saveUserAlternatives, getUserAlternatives, mergeAlternatives } from './services/firestoreService';
+import { saveUserAlternatives, getUserAlternatives, mergeAlternatives, addAlternative, removeAlternative } from './services/firestoreService';
 import { Alternative } from '@rooshi/notube-shared';
 import defaultAlternatives from '@rooshi/notube-shared/default_alternatives.json';
+
+/**
+ * Validates that an Alternative has all required fields
+ * @param {Object} data - The alternative data to validate
+ * @returns {boolean} - True if all required fields are present and non-empty
+ */
+const isValidAlternative = (data) => {
+  if (!data) return false;
+
+  const requiredFields = ['title', 'url', 'description', 'category'];
+  return requiredFields.every(field => {
+    const value = data[field];
+    return value && typeof value === 'string' && value.trim().length > 0;
+  });
+};
+
+/**
+ * Compares two lists of alternatives to check if they're identical
+ */
+const areAlternativesEqual = (list1, list2) => {
+  if (list1.length !== list2.length) return false;
+
+  const set1 = new Set(list1.map(a => a.url || a.title));
+  const set2 = new Set(list2.map(a => a.url || a.title));
+
+  return set1.size === set2.size && [...set1].every(item => set2.has(item));
+};
+
+
 
 function App() {
   const [localItems, setLocalItems] = useState([]);
@@ -12,24 +41,33 @@ function App() {
   const [newlyAdded, setNewlyAdded] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ show: false, alternative: null });
+  const [syncModal, setSyncModal] = useState({ show: false, localItems: [], cloudItems: [] });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { currentUser, logout } = useAuth();
   const longPressTimer = useRef(null);
+  const hasInitializedSync = useRef(false);
 
+  // Initial load from chrome.storage
   useEffect(() => {
-    // Initialize data
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['localItems', 'userAlternatives'], (result) => {
         // Check if we have valid local items
         if (result.localItems && result.localItems.length > 0) {
-          // Normal load
-          console.log("Loaded local items:", result.localItems.length);
-          setLocalItems(result.localItems);
+          // Normal load - filter out invalid alternatives
+          const validItems = result.localItems.filter(isValidAlternative);
+          console.log(`Loaded local items: ${validItems.length} valid out of ${result.localItems.length} total`);
+          setLocalItems(validItems);
+
+          // Update storage if we filtered out any invalid items
+          if (validItems.length !== result.localItems.length) {
+            chrome.storage.local.set({ localItems: validItems });
+          }
         } else if (result.userAlternatives && result.userAlternatives.length > 0) {
-          // Migration from old version
-          console.log("Migrating user alternatives");
-          setLocalItems(result.userAlternatives);
-          chrome.storage.local.set({ localItems: result.userAlternatives });
+          // Migration from old version - filter out invalid alternatives
+          const validItems = result.userAlternatives.filter(isValidAlternative);
+          console.log(`Migrating user alternatives: ${validItems.length} valid`);
+          setLocalItems(validItems);
+          chrome.storage.local.set({ localItems: validItems });
         } else {
           // First run or empty: Load defaults
           console.log("Loading defaults:", defaultAlternatives.length);
@@ -43,52 +81,81 @@ function App() {
     }
   }, []);
 
-  // Keep a ref to localItems to access the latest value in async callbacks
-  const localItemsRef = useRef(localItems);
-  useEffect(() => {
-    localItemsRef.current = localItems;
-  }, [localItems]);
-
   // Sync with Firestore when user logs in
   useEffect(() => {
     async function syncFromCloud() {
-      if (currentUser) {
+      if (currentUser && !hasInitializedSync.current) {
+        hasInitializedSync.current = true;
+
         try {
           const cloudItems = await getUserAlternatives(currentUser.uid);
 
-          // Merge local items with cloud items
-          // Use the ref to ensure we have the very latest local items even if they changed while fetching
-          const merged = mergeAlternatives(localItemsRef.current, cloudItems);
+          // Check if this user has synced before on this device
+          const storage = await new Promise(resolve => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.get(['lastSyncedUserId'], resolve);
+            } else {
+              resolve({});
+            }
+          });
 
-          setLocalItems(merged);
+          const isFirstSync = storage.lastSyncedUserId !== currentUser.uid;
 
-          // Update Chrome storage
-          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set({ localItems: merged });
+          if (cloudItems.length === 0) {
+            // Case 1: Cloud is empty -> Push local items to cloud automatically
+            console.log('Cloud is empty, pushing local items');
+            await saveUserAlternatives(currentUser.uid, localItems);
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ lastSyncedUserId: currentUser.uid });
+            }
+          } else if (isFirstSync && !areAlternativesEqual(localItems, cloudItems)) {
+            // Case 2: First time sync and data differs -> Show sync dialog
+            console.log('First time sync with data conflict, showing dialog');
+            setSyncModal({ show: true, localItems, cloudItems });
+          } else {
+            // Case 3: Subsequent sync or identical data -> Always use cloud data
+            console.log('Subsequent sync or identical data, using cloud data');
+            setLocalItems(cloudItems);
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ localItems: cloudItems, lastSyncedUserId: currentUser.uid });
+            }
           }
-
-          // We do NOT need to save back to cloud here explicitly.
-          // setLocalItems(merged) will trigger the OTHER useEffect which handles saving.
-          // This prevents a double-save and race condition.
         } catch (error) {
           console.error("Error syncing with cloud:", error);
         }
       }
     }
 
-    syncFromCloud();
-  }, [currentUser]); // Run when user logs in
-
-  // Save to Firestore when localItems changes (if logged in)
-  useEffect(() => {
     if (currentUser) {
-      const timeoutId = setTimeout(() => {
-        saveUserAlternatives(currentUser.uid, localItems);
-      }, 1000); // Debounce 1s
-
-      return () => clearTimeout(timeoutId);
+      syncFromCloud();
+    } else {
+      // Reset sync flag when user logs out
+      hasInitializedSync.current = false;
     }
-  }, [localItems, currentUser]);
+  }, [currentUser, localItems]);
+
+  const handleSyncChoice = async (choice) => {
+    const { localItems: local, cloudItems: cloud } = syncModal;
+
+    if (choice === 'cloud') {
+      // Use cloud data (overwrite local)
+      setLocalItems(cloud);
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ localItems: cloud, lastSyncedUserId: currentUser.uid });
+      }
+    } else if (choice === 'merge') {
+      // Merge: Cloud wins conflicts, new local items added
+      const merged = mergeAlternatives(local, cloud);
+      setLocalItems(merged);
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ localItems: merged, lastSyncedUserId: currentUser.uid });
+      }
+      // Save merged back to cloud
+      await saveUserAlternatives(currentUser.uid, merged);
+    }
+
+    setSyncModal({ show: false, localItems: [], cloudItems: [] });
+  };
 
   useEffect(() => {
     // If there's a newly added item, show it at the top
@@ -166,8 +233,18 @@ function App() {
         setLocalItems(updatedItems);
         setNewlyAdded(newAlt); // Show at top until reload
 
+        // Update local storage
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.set({ localItems: updatedItems });
+        }
+
+        // Update cloud if logged in (atomic operation)
+        if (currentUser) {
+          try {
+            await addAlternative(currentUser.uid, newAlt);
+          } catch (error) {
+            console.error('Error adding to cloud:', error);
+          }
         }
       } catch (error) {
         console.error('Error adding site:', error);
@@ -191,13 +268,14 @@ function App() {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteModal.alternative) {
       const updatedItems = localItems.filter(
         alt => alt.url !== deleteModal.alternative.url
       );
       setLocalItems(updatedItems);
 
+      // Update local storage
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ localItems: updatedItems });
       }
@@ -205,6 +283,15 @@ function App() {
       // Clear newly added if it was just deleted
       if (newlyAdded && newlyAdded.url === deleteModal.alternative.url) {
         setNewlyAdded(null);
+      }
+
+      // Update cloud if logged in (atomic operation)
+      if (currentUser) {
+        try {
+          await removeAlternative(currentUser.uid, deleteModal.alternative);
+        } catch (error) {
+          console.error('Error removing from cloud:', error);
+        }
       }
     }
     setDeleteModal({ show: false, alternative: null });
@@ -323,6 +410,43 @@ function App() {
           </button>
         </div>
       </div>
+
+
+
+      {/* Sync Confirmation Modal */}
+      {syncModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-800 rounded-2xl border border-white/10 p-6 max-w-sm w-full shadow-2xl shadow-black/50 animate-scaleIn">
+            <div className="flex items-start space-x-3 mb-4">
+              <div className="flex-shrink-0 p-2 bg-indigo-500/20 rounded-lg">
+                <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-slate-100 mb-1">Sync Conflict</h3>
+                <p className="text-sm text-slate-400">
+                  Cloud data found. How would you like to proceed?
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col space-y-3 mt-6">
+              <button
+                onClick={() => handleSyncChoice('cloud')}
+                className="w-full py-2.5 px-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 rounded-lg font-medium transition-all duration-200 border border-red-500/30 hover:border-red-500/50"
+              >
+                Use cloud data
+              </button>
+              <button
+                onClick={() => handleSyncChoice('merge')}
+                className="w-full py-2.5 px-4 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-indigo-200 rounded-lg font-medium transition-all duration-200 border border-indigo-500/30 hover:border-indigo-500/50"
+              >
+                Merge cloud and local data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal.show && (

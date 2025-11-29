@@ -1,3 +1,4 @@
+
 # 🚫 NoTube
 
 > **Break your habits** — A Chrome extension that offers the chance to break the automatic Youtube opening and try something else..
